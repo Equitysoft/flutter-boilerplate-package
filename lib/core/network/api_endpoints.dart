@@ -38,7 +38,7 @@ class ApiEndpoints {
   static const String changePassword = '/auth/change-password';
   static const String socialLogin = '/auth/social-login';
 
-  // ==================== User Endpoints ====================
+  // ==================== User Endpoints ====================  
   static const String profile = '/user/profile';
   static const String updateProfile = '/user/profile/update';
   static const String uploadAvatar = '/user/avatar';

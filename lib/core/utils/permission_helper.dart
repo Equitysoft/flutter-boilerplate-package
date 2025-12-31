@@ -1,9 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-/// Permission Helper - Handle app permissions
+/// Permission Helper - Handle app permissions with version-specific support
+///
+/// Supports:
+/// - Android 13+ (API 33+): Granular media permissions, POST_NOTIFICATIONS
+/// - Android 10-12 (API 29-32): Scoped storage
+/// - Android 9 and below: Legacy storage
 ///
 /// Usage:
 /// ```dart
@@ -20,6 +26,8 @@ enum AppPermission {
   camera,
   storage,
   photos,
+  videos,
+  audio,
   microphone,
   notification,
   location,
@@ -32,6 +40,9 @@ enum AppPermission {
 class PermissionHelper {
   PermissionHelper._();
 
+  /// Cached Android SDK version
+  static int? _cachedAndroidVersion;
+
   // ==================== SINGLE PERMISSION ====================
 
   /// Request camera permission
@@ -39,22 +50,63 @@ class PermissionHelper {
     return await _requestPermission(Permission.camera, 'Camera');
   }
 
-  /// Request storage permission
+  /// Request storage permission (handles all Android versions)
   static Future<bool> requestStorage() async {
     if (Platform.isAndroid) {
-      // For Android 13+ use photos permission
-      final androidInfo = await _getAndroidVersion();
-      if (androidInfo >= 33) {
+      final sdkVersion = await getAndroidVersion();
+
+      if (sdkVersion >= 33) {
+        // Android 13+: Request granular media permissions
+        final photosGranted = await _requestPermission(
+          Permission.photos,
+          'Photos',
+        );
+        final videosGranted = await _requestPermission(
+          Permission.videos,
+          'Videos',
+        );
+        return photosGranted && videosGranted;
+      } else if (sdkVersion >= 30) {
+        // Android 11-12: Use manage external storage or photos
         return await _requestPermission(Permission.photos, 'Photos');
+      } else {
+        // Android 10 and below: Legacy storage permission
+        return await _requestPermission(Permission.storage, 'Storage');
       }
-      return await _requestPermission(Permission.storage, 'Storage');
+    }
+    // iOS: Use photos permission
+    return await _requestPermission(Permission.photos, 'Photos');
+  }
+
+  /// Request photos permission only
+  static Future<bool> requestPhotos() async {
+    return await _requestPermission(Permission.photos, 'Photos');
+  }
+
+  /// Request videos permission (Android 13+ only)
+  static Future<bool> requestVideos() async {
+    if (Platform.isAndroid) {
+      final sdkVersion = await getAndroidVersion();
+      if (sdkVersion >= 33) {
+        return await _requestPermission(Permission.videos, 'Videos');
+      }
+      // For older versions, use storage
+      return await requestStorage();
     }
     return await _requestPermission(Permission.photos, 'Photos');
   }
 
-  /// Request photos permission
-  static Future<bool> requestPhotos() async {
-    return await _requestPermission(Permission.photos, 'Photos');
+  /// Request audio files permission (Android 13+ only)
+  static Future<bool> requestAudio() async {
+    if (Platform.isAndroid) {
+      final sdkVersion = await getAndroidVersion();
+      if (sdkVersion >= 33) {
+        return await _requestPermission(Permission.audio, 'Audio');
+      }
+      // For older versions, use storage
+      return await requestStorage();
+    }
+    return await _requestPermission(Permission.mediaLibrary, 'Media');
   }
 
   /// Request microphone permission
@@ -62,8 +114,21 @@ class PermissionHelper {
     return await _requestPermission(Permission.microphone, 'Microphone');
   }
 
-  /// Request notification permission
+  /// Request notification permission (handles Android 13+ requirement)
   static Future<bool> requestNotification() async {
+    if (Platform.isAndroid) {
+      final sdkVersion = await getAndroidVersion();
+      if (sdkVersion >= 33) {
+        // Android 13+ requires explicit notification permission
+        return await _requestPermission(
+          Permission.notification,
+          'Notification',
+        );
+      }
+      // Android 12 and below: notifications are allowed by default
+      return true;
+    }
+    // iOS: Request notification permission
     return await _requestPermission(Permission.notification, 'Notification');
   }
 
@@ -74,9 +139,13 @@ class PermissionHelper {
 
   /// Request location always permission
   static Future<bool> requestLocationAlways() async {
+    // Must request location permission first
+    final locationGranted = await requestLocation();
+    if (!locationGranted) return false;
+
     return await _requestPermission(
       Permission.locationAlways,
-      'Location Always',
+      'Background Location',
     );
   }
 
@@ -113,7 +182,7 @@ class PermissionHelper {
   /// Check if all permissions are granted
   static Future<bool> checkAll(List<AppPermission> permissions) async {
     for (final permission in permissions) {
-      final p = _getPermission(permission);
+      final p = await _getPermission(permission);
       if (!await p.isGranted) {
         return false;
       }
@@ -128,11 +197,14 @@ class PermissionHelper {
     return await Permission.camera.isGranted;
   }
 
-  /// Check storage permission status
+  /// Check storage permission status (version aware)
   static Future<bool> get isStorageGranted async {
     if (Platform.isAndroid) {
-      final androidInfo = await _getAndroidVersion();
-      if (androidInfo >= 33) {
+      final sdkVersion = await getAndroidVersion();
+      if (sdkVersion >= 33) {
+        return await Permission.photos.isGranted &&
+            await Permission.videos.isGranted;
+      } else if (sdkVersion >= 30) {
         return await Permission.photos.isGranted;
       }
       return await Permission.storage.isGranted;
@@ -147,12 +219,63 @@ class PermissionHelper {
 
   /// Check notification permission status
   static Future<bool> get isNotificationGranted async {
+    if (Platform.isAndroid) {
+      final sdkVersion = await getAndroidVersion();
+      if (sdkVersion < 33) {
+        return true; // Always granted on Android < 13
+      }
+    }
     return await Permission.notification.isGranted;
   }
 
   /// Check location permission status
   static Future<bool> get isLocationGranted async {
     return await Permission.location.isGranted;
+  }
+
+  // ==================== ANDROID VERSION DETECTION ====================
+
+  /// Get Android SDK version (cached)
+  static Future<int> getAndroidVersion() async {
+    if (_cachedAndroidVersion != null) {
+      return _cachedAndroidVersion!;
+    }
+
+    if (!Platform.isAndroid) {
+      _cachedAndroidVersion = 0;
+      return 0;
+    }
+
+    try {
+      // Use MethodChannel to get Android SDK version
+      const channel = MethodChannel('flutter.native/helper');
+      final version = await channel.invokeMethod<int>('getAndroidSdkVersion');
+      _cachedAndroidVersion = version ?? 33;
+      return _cachedAndroidVersion!;
+    } catch (e) {
+      // Fallback: Parse from Platform.operatingSystemVersion
+      try {
+        final osVersion = Platform.operatingSystemVersion;
+        // Try to extract SDK version from strings like "SDK 33" or "API 33"
+        final sdkMatch = RegExp(
+          r'SDK\s*(\d+)|API\s*(\d+)',
+        ).firstMatch(osVersion);
+        if (sdkMatch != null) {
+          final version = int.tryParse(
+            sdkMatch.group(1) ?? sdkMatch.group(2) ?? '',
+          );
+          if (version != null) {
+            _cachedAndroidVersion = version;
+            return version;
+          }
+        }
+      } catch (_) {}
+
+      // Default to Android 13 (conservative for permissions)
+      debugPrint('Could not detect Android version, defaulting to 33');
+      _cachedAndroidVersion = 33;
+      return 33;
+    }
   }
 
   // ==================== INTERNAL METHODS ====================
@@ -167,11 +290,22 @@ class PermissionHelper {
       return true;
     }
 
+    // Check if restricted (iOS specific)
+    if (await permission.isRestricted) {
+      _showRestrictedMessage(permissionName);
+      return false;
+    }
+
     // Request permission
     final status = await permission.request();
 
     if (status.isGranted) {
       return true;
+    }
+
+    // Handle limited (iOS 14+ photos)
+    if (status.isLimited) {
+      return true; // Limited access is still usable
     }
 
     // Handle permanently denied
@@ -198,6 +332,10 @@ class PermissionHelper {
         return await requestStorage();
       case AppPermission.photos:
         return await requestPhotos();
+      case AppPermission.videos:
+        return await requestVideos();
+      case AppPermission.audio:
+        return await requestAudio();
       case AppPermission.microphone:
         return await requestMicrophone();
       case AppPermission.notification:
@@ -215,15 +353,23 @@ class PermissionHelper {
     }
   }
 
-  /// Get permission by type
-  static Permission _getPermission(AppPermission type) {
+  /// Get permission by type (version aware)
+  static Future<Permission> _getPermission(AppPermission type) async {
     switch (type) {
       case AppPermission.camera:
         return Permission.camera;
       case AppPermission.storage:
+        if (Platform.isAndroid) {
+          final sdkVersion = await getAndroidVersion();
+          if (sdkVersion >= 33) return Permission.photos;
+        }
         return Permission.storage;
       case AppPermission.photos:
         return Permission.photos;
+      case AppPermission.videos:
+        return Permission.videos;
+      case AppPermission.audio:
+        return Permission.audio;
       case AppPermission.microphone:
         return Permission.microphone;
       case AppPermission.notification:
@@ -278,10 +424,18 @@ class PermissionHelper {
     );
   }
 
-  /// Get Android SDK version
-  static Future<int> _getAndroidVersion() async {
-    if (!Platform.isAndroid) return 0;
-    // Default to a high version for newer Android
-    return 33;
+  /// Show restricted message (iOS)
+  static void _showRestrictedMessage(String permissionName) {
+    Get.showSnackbar(
+      GetSnackBar(
+        message:
+            '$permissionName permission is restricted by parental controls.',
+        duration: const Duration(seconds: 3),
+        backgroundColor: Colors.red,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 8,
+      ),
+    );
   }
 }

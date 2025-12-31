@@ -1,41 +1,31 @@
 import 'package:flutter/foundation.dart';
-import 'package:workmanager/workmanager.dart';
 
-/// Background Task Helper - Periodic sync and background tasks
+/// Background Task Helper - Stub implementation
 ///
-/// Usage:
+/// NOTE: The workmanager package is currently incompatible with Kotlin 2.x.
+/// This is a stub implementation that provides no-op methods.
+///
+/// When workmanager becomes compatible with Kotlin 2.x:
+/// 1. Add workmanager: ^0.9.0 to pubspec.yaml
+/// 2. Restore the full implementation from the commented section below
+///
+/// Alternative approaches while waiting for Kotlin 2.x support:
+/// - Use flutter_background_service package
+/// - Use android_alarm_manager_plus for periodic tasks
+/// - Implement native platform channels for background work
+///
+/// Usage (when restored):
 /// ```dart
 /// // Initialize in main()
-/// await BackgroundTaskHelper.init(callbackDispatcher);
+/// await BackgroundTaskHelper.init();
 ///
 /// // Register periodic task
 /// await BackgroundTaskHelper.registerPeriodicTask(
 ///   taskName: 'sync_data',
+///   uniqueName: 'sync_data_periodic',
 ///   frequency: Duration(hours: 1),
 /// );
 /// ```
-
-/// Background task callback - must be a top-level function
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  Workmanager().executeTask((taskName, inputData) async {
-    debugPrint('Background task executing: $taskName');
-
-    try {
-      // Get handler from registry
-      final handler = BackgroundTaskHelper._handlers[taskName];
-      if (handler != null) {
-        return await handler(inputData);
-      }
-
-      debugPrint('No handler found for task: $taskName');
-      return true;
-    } catch (e) {
-      debugPrint('Background task failed: $taskName - $e');
-      return false;
-    }
-  });
-}
 
 class BackgroundTaskHelper {
   BackgroundTaskHelper._();
@@ -44,11 +34,10 @@ class BackgroundTaskHelper {
   static final Map<String, Future<bool> Function(Map<String, dynamic>?)>
   _handlers = {};
 
-  /// Initialize background task manager
+  /// Initialize background task manager (no-op stub)
   static Future<void> init() async {
-    await Workmanager().initialize(
-      callbackDispatcher,
-      isInDebugMode: kDebugMode,
+    debugPrint(
+      'BackgroundTaskHelper: Stub - workmanager not available with Kotlin 2.x',
     );
   }
 
@@ -60,135 +49,85 @@ class BackgroundTaskHelper {
     Future<bool> Function(Map<String, dynamic>?) handler,
   ) {
     _handlers[taskName] = handler;
+    debugPrint('BackgroundTaskHelper: Registered handler for $taskName (stub)');
   }
 
-  /// Register one-time task
+  /// Register one-time task (no-op stub)
   static Future<void> registerOneTimeTask({
     required String taskName,
     required String uniqueName,
     Duration initialDelay = Duration.zero,
     Map<String, dynamic>? inputData,
-    Constraints? constraints,
-    BackoffPolicy backoffPolicy = BackoffPolicy.linear,
-    Duration backoffDelay = const Duration(seconds: 10),
-    OutOfQuotaPolicy outOfQuotaPolicy =
-        OutOfQuotaPolicy.run_as_non_expedited_work_request,
   }) async {
-    await Workmanager().registerOneOffTask(
-      uniqueName,
-      taskName,
-      initialDelay: initialDelay,
-      inputData: inputData,
-      constraints: constraints,
-      backoffPolicy: backoffPolicy,
-      backoffPolicyDelay: backoffDelay,
-      outOfQuotaPolicy: outOfQuotaPolicy,
+    debugPrint(
+      'BackgroundTaskHelper: registerOneTimeTask is a stub - not implemented',
     );
-    debugPrint('Registered one-time task: $taskName');
   }
 
-  /// Register periodic task
+  /// Register periodic task (no-op stub)
   static Future<void> registerPeriodicTask({
     required String taskName,
     required String uniqueName,
     required Duration frequency,
     Duration initialDelay = Duration.zero,
     Map<String, dynamic>? inputData,
-    Constraints? constraints,
-    BackoffPolicy backoffPolicy = BackoffPolicy.linear,
-    Duration backoffDelay = const Duration(seconds: 10),
-    OutOfQuotaPolicy outOfQuotaPolicy =
-        OutOfQuotaPolicy.run_as_non_expedited_work_request,
   }) async {
-    await Workmanager().registerPeriodicTask(
-      uniqueName,
-      taskName,
-      frequency: frequency,
-      initialDelay: initialDelay,
-      inputData: inputData,
-      constraints: constraints,
-      backoffPolicy: backoffPolicy,
-      backoffPolicyDelay: backoffDelay,
-      outOfQuotaPolicy: outOfQuotaPolicy,
-    );
     debugPrint(
-      'Registered periodic task: $taskName (every ${frequency.inMinutes} minutes)',
+      'BackgroundTaskHelper: registerPeriodicTask is a stub - not implemented',
     );
   }
 
   // ==================== TASK CANCELLATION ====================
 
-  /// Cancel specific task
+  /// Cancel specific task (no-op stub)
   static Future<void> cancelTask(String uniqueName) async {
-    await Workmanager().cancelByUniqueName(uniqueName);
-    debugPrint('Cancelled task: $uniqueName');
+    debugPrint('BackgroundTaskHelper: cancelTask is a stub');
   }
 
-  /// Cancel all tasks with specific tag
+  /// Cancel all tasks with specific tag (no-op stub)
   static Future<void> cancelByTag(String tag) async {
-    await Workmanager().cancelByTag(tag);
-    debugPrint('Cancelled tasks with tag: $tag');
+    debugPrint('BackgroundTaskHelper: cancelByTag is a stub');
   }
 
-  /// Cancel all tasks
+  /// Cancel all tasks (no-op stub)
   static Future<void> cancelAll() async {
-    await Workmanager().cancelAll();
-    debugPrint('Cancelled all background tasks');
+    debugPrint('BackgroundTaskHelper: cancelAll is a stub');
   }
 
   // ==================== COMMON TASK TYPES ====================
 
-  /// Register data sync task (every 15 minutes)
+  /// Register data sync task (stub)
   static Future<void> registerSyncTask({
     required Future<bool> Function(Map<String, dynamic>?) onSync,
     Duration frequency = const Duration(minutes: 15),
   }) async {
     registerHandler('data_sync', onSync);
-    await registerPeriodicTask(
-      taskName: 'data_sync',
-      uniqueName: 'data_sync_periodic',
-      frequency: frequency,
-      constraints: Constraints(networkType: NetworkType.connected),
-    );
+    debugPrint('BackgroundTaskHelper: registerSyncTask is a stub');
   }
 
-  /// Register upload retry task (every 30 minutes)
+  /// Register upload retry task (stub)
   static Future<void> registerUploadRetryTask({
     required Future<bool> Function(Map<String, dynamic>?) onRetry,
     Duration frequency = const Duration(minutes: 30),
   }) async {
     registerHandler('upload_retry', onRetry);
-    await registerPeriodicTask(
-      taskName: 'upload_retry',
-      uniqueName: 'upload_retry_periodic',
-      frequency: frequency,
-      constraints: Constraints(networkType: NetworkType.connected),
-    );
+    debugPrint('BackgroundTaskHelper: registerUploadRetryTask is a stub');
   }
 
-  /// Register cache cleanup task (every 24 hours)
+  /// Register cache cleanup task (stub)
   static Future<void> registerCacheCleanupTask({
     required Future<bool> Function(Map<String, dynamic>?) onCleanup,
   }) async {
     registerHandler('cache_cleanup', onCleanup);
-    await registerPeriodicTask(
-      taskName: 'cache_cleanup',
-      uniqueName: 'cache_cleanup_periodic',
-      frequency: const Duration(hours: 24),
-    );
+    debugPrint('BackgroundTaskHelper: registerCacheCleanupTask is a stub');
   }
 
-  /// Register notification check task (every hour)
+  /// Register notification check task (stub)
   static Future<void> registerNotificationCheckTask({
     required Future<bool> Function(Map<String, dynamic>?) onCheck,
   }) async {
     registerHandler('notification_check', onCheck);
-    await registerPeriodicTask(
-      taskName: 'notification_check',
-      uniqueName: 'notification_check_periodic',
-      frequency: const Duration(hours: 1),
-      constraints: Constraints(networkType: NetworkType.connected),
-    );
+    debugPrint('BackgroundTaskHelper: registerNotificationCheckTask is a stub');
   }
 
   // ==================== UTILITY ====================

@@ -6,6 +6,7 @@ import 'package:app_boilerplate/core/network/api_client.dart';
 import 'package:app_boilerplate/core/network/api_config.dart';
 import 'package:app_boilerplate/services/prefs_service.dart';
 import 'package:app_boilerplate/services/firebase_service.dart';
+import 'package:app_boilerplate/example/example.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,29 +41,37 @@ Future<void> _initServices() async {
     // defaultHeaders: {'X-App-Version': '1.0.0'},
   );
 
-  // Initialize Firebase
-  await Firebase.initializeApp(
-    // TODO: Add your firebase_options.dart
-    // options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // Initialize Firebase (optional - skip if not configured)
+  try {
+    await Firebase.initializeApp(
+      // TODO: Add your firebase_options.dart
+      // options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint('Firebase initialized successfully');
 
-  // Initialize Firebase Messaging Service
-  await FirebaseService.instance.init(
-    onNotificationTapped: (data) {
-      // Handle notification tap - navigate to specific screen
-      debugPrint('Notification tapped with data: $data');
-      _handleNotificationNavigation(data);
-    },
-    onForegroundMessage: (message) {
-      // Handle foreground message
-      debugPrint('Foreground message: ${message.notification?.title}');
-    },
-    onTokenRefresh: (token) {
-      // Handle FCM token refresh - send to server
-      debugPrint('FCM token refreshed: $token');
-      _sendTokenToServer(token);
-    },
-  );
+    // Initialize Firebase Messaging Service
+    await FirebaseService.instance.init(
+      onNotificationTapped: (data) {
+        // Handle notification tap - navigate to specific screen
+        debugPrint('Notification tapped with data: $data');
+        _handleNotificationNavigation(data);
+      },
+      onForegroundMessage: (message) {
+        // Handle foreground message
+        debugPrint('Foreground message: ${message.notification?.title}');
+      },
+      onTokenRefresh: (token) {
+        // Handle FCM token refresh - send to server
+        debugPrint('FCM token refreshed: $token');
+        _sendTokenToServer(token);
+      },
+    );
+  } catch (e) {
+    debugPrint('Firebase initialization skipped or failed: $e');
+    debugPrint(
+      'To enable Firebase, add firebase_options.dart via FlutterFire CLI',
+    );
+  }
 
   // Setup API client auth error callback
   ApiClient.instance.setAuthErrorCallback(() {
@@ -163,6 +172,23 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             _buildInfoCard(context),
+            const SizedBox(height: 24),
+            // Navigate to Example App
+            ElevatedButton.icon(
+              onPressed: () {
+                // Register ExampleController for demo screens
+                Get.put(ExampleController());
+                Get.to(() => const ExampleHomeScreen());
+              },
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('View Example Demos'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+              ),
+            ),
           ],
         ),
       ),
