@@ -1,0 +1,13 @@
+name: core_file
+description: File picker utilities with validation for images, videos, and documents.
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  get: ^4.7.2
+  file_picker: ^8.1.7

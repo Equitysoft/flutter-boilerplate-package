@@ -1,0 +1,11 @@
+name: core_pagination
+description: Pagination utilities for list data with scroll-based loading.
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter

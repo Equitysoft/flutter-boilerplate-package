@@ -6,7 +6,6 @@ import 'package:app_boilerplate/core/network/api_client.dart';
 import 'package:app_boilerplate/core/network/api_config.dart';
 import 'package:app_boilerplate/services/prefs_service.dart';
 import 'package:app_boilerplate/services/firebase_service.dart';
-import 'package:app_boilerplate/example/example.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -173,22 +172,6 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 32),
             _buildInfoCard(context),
             const SizedBox(height: 24),
-            // Navigate to Example App
-            ElevatedButton.icon(
-              onPressed: () {
-                // Register ExampleController for demo screens
-                Get.put(ExampleController());
-                Get.to(() => const ExampleHomeScreen());
-              },
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('View Example Demos'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
-                ),
-              ),
-            ),
           ],
         ),
       ),

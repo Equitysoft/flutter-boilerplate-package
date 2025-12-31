@@ -1,0 +1,13 @@
+name: core_permission
+description: Permission handling utilities with Android version-aware support.
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  get: ^4.7.2
+  permission_handler: ^11.3.1

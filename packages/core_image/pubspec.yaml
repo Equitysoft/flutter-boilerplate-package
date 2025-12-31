@@ -1,0 +1,12 @@
+name: core_image
+description: Image handling utilities with caching, placeholders, and error handling.
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cached_network_image: ^3.4.1

@@ -1,0 +1,12 @@
+name: core_logger
+description: Centralized logging utility with customizable output.
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  logger: ^2.5.0

@@ -1,0 +1,11 @@
+name: core_screen
+description: Screen size, orientation, and responsive layout utilities.
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter

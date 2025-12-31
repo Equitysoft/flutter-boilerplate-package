@@ -1,0 +1,11 @@
+name: core_validation
+description: Field validators for form validation including email, phone, password, and more.
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
