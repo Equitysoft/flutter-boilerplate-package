@@ -18,11 +18,7 @@ class ValidatorConfig {
 
   // Password messages
   final String passwordRequired;
-  final String Function(int minLength) passwordMinLength;
-  final String passwordUppercase;
-  final String passwordLowercase;
-  final String passwordNumber;
-  final String passwordSpecialChar;
+  final String Function(int minLength) passwordInvalid;
 
   // Confirm Password messages
   final String confirmPasswordRequired;
@@ -84,14 +80,7 @@ class ValidatorConfig {
     this.phoneInvalidLength = _defaultPhoneLength,
     // Password
     this.passwordRequired = 'Password is required.',
-    this.passwordMinLength = _defaultPasswordMinLength,
-    this.passwordUppercase =
-        'Password must contain at least one uppercase letter.',
-    this.passwordLowercase =
-        'Password must contain at least one lowercase letter.',
-    this.passwordNumber = 'Password must contain at least one number.',
-    this.passwordSpecialChar =
-        'Password must contain at least one special character.',
+    this.passwordInvalid = _defaultPasswordInvalid,
     // Confirm Password
     this.confirmPasswordRequired = 'Confirm password is required.',
     this.confirmPasswordMismatch = 'Passwords do not match.',
@@ -132,8 +121,8 @@ class ValidatorConfig {
   // Default function implementations
   static String _defaultPhoneLength(int length) =>
       'Mobile number must be $length digits.';
-  static String _defaultPasswordMinLength(int min) =>
-      'Password must be at least $min characters long.';
+  static String _defaultPasswordInvalid(int minLength) =>
+      'Password must be at least $minLength characters with uppercase, lowercase, number, and special character.';
   static String _defaultNameMinLength(int min) =>
       'Name must be at least $min characters long.';
   static String _defaultNumberMin(num min) =>
@@ -246,24 +235,16 @@ class Validator {
   }
 
   // ==================== 4. PASSWORD ====================
-  static String? password(String? value, {int minLength = 6}) {
+  static String? password(String? value, {int minLength = 8}) {
     if (value == null || value.isEmpty) {
       return _config.passwordRequired;
     }
-    if (value.length < minLength) {
-      return _config.passwordMinLength(minLength);
-    }
-    if (!value.contains(RegExp(r'[A-Z]'))) {
-      return _config.passwordUppercase;
-    }
-    if (!value.contains(RegExp(r'[a-z]'))) {
-      return _config.passwordLowercase;
-    }
-    if (!value.contains(RegExp(r'[0-9]'))) {
-      return _config.passwordNumber;
-    }
-    if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
-      return _config.passwordSpecialChar;
+    // Regex: min minLength chars, at least one uppercase, lowercase, number, and special character
+    final regex = RegExp(
+      '^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#\$%^&*(),.?":{}|<>]).{$minLength,}\$',
+    );
+    if (!regex.hasMatch(value)) {
+      return _config.passwordInvalid(minLength);
     }
     return null;
   }
@@ -434,7 +415,7 @@ class Validator {
       case ValidationType.phone:
         return phone(value, length: length ?? 10);
       case ValidationType.password:
-        return password(value, minLength: minLength ?? 6);
+        return password(value, minLength: minLength ?? 8);
       case ValidationType.confirmPassword:
         return confirmPassword(value, confirmValue);
       case ValidationType.name:
