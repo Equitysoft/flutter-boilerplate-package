@@ -241,7 +241,11 @@ class Validator {
     }
     // Regex: min minLength chars, at least one uppercase, lowercase, number, and special character
     final regex = RegExp(
-      '^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#\$%^&*(),.?":{}|<>]).{$minLength,}\$',
+      '^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[' +
+          r'!@#$%^&*(),.?":{}|<>' +
+          "'" +
+          r'+\-/;=[\\\]_`~' +
+          ']).{$minLength,}\$',
     );
     if (!regex.hasMatch(value)) {
       return _config.passwordInvalid(minLength);
